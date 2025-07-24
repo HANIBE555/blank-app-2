@@ -31,7 +31,7 @@ def set_background(image_path):
         st.markdown(css, unsafe_allow_html=True)
 
 # ✅ עדכון נתיב לתמונה מתוך ../images כי אנחנו בתוך /pages/
-set_background("../images/ING2.png")
+set_background("images/ING2.png")
 
 # --- הגדרות כלליות לדף ---
 st.set_page_config(page_title="בדיקת CT לגידול", layout="centered")
