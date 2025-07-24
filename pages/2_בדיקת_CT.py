@@ -6,7 +6,7 @@ import tempfile
 import os
 import base64
 
-# --- פונקציית רקע עם תמונה וכיווניות RTL ---
+# --- הגדרת רקע ו-RTL ---
 def set_background(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as f:
@@ -30,13 +30,11 @@ def set_background(image_path):
         """
         st.markdown(css, unsafe_allow_html=True)
 
-# --- הגדרות דף ---
+# ✅ עדכון נתיב לתמונה מתוך ../images כי אנחנו בתוך /pages/
+set_background("../images/ING2.png")
+
+# --- הגדרות כלליות לדף ---
 st.set_page_config(page_title="בדיקת CT לגידול", layout="centered")
-
-# --- רקע ו־RTL ---
-set_background("ING2.png")
-
-# --- כותרת ---
 st.title("🧠 מערכת לזיהוי גידול בתמונת CT")
 
 # --- שלב 1: העלאת קובץ מודל ---
@@ -52,15 +50,15 @@ if model_file is not None:
         model = load_model(tmp_path)
         st.success("✅ המודל נטען בהצלחה!")
 
-        # --- שלב 2: העלאת תמונה ---
-        st.subheader("2. לבדיקה CT העלה תמונת")
-        image_file = st.file_uploader("בחר תמונת CT", type=["jpg", "jpeg", "png"])
+        # --- שלב 2: העלאת תמונת CT ---
+        st.subheader("2. העלה תמונת CT לבדיקה")
+        image_file = st.file_uploader("בחר תמונה", type=["jpg", "jpeg", "png"])
 
         if image_file is not None:
             st.image(image_file, caption="תמונה שהועלתה", use_container_width=True)
 
             # עיבוד תמונה
-            img = load_img(image_file, target_size=(224, 224))
+            img = load_img(image_file, target_size=(224, 224))  # שים לב להתאים לפי המודל שלך
             img_array = img_to_array(img) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
 
@@ -75,5 +73,5 @@ if model_file is not None:
             st.markdown(f"#### סבירות לגידול: {prob * 100:.2f}%")
 
     except Exception as e:
-        st.error("❌ שגיאה בטעינת המודל. ודא שהקובץ הוא מסוג .h5 תקין.")
+        st.error("❌ שגיאה בטעינת המודל. ודא שהקובץ הוא תקין מסוג .h5.")
         st.exception(e)
