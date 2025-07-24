@@ -1,74 +1,49 @@
 import streamlit as st
-import zipfile
 import os
-import tempfile
-import shutil
+import base64
+import numpy as np
+import matplotlib.pyplot as plt
 from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from sklearn.metrics import classification_report, confusion_matrix
-import matplotlib.pyplot as plt
-import numpy as np
+from tensorflow.keras.utils import load_img, img_to_array
+from sklearn.metrics import classification_report
 
-st.set_page_config(page_title="זיהוי גידול בתמונות CT", layout="centered")
-
-# ✅ הגדרת רקע ורוד וכיווניות RTL
-st.markdown(
-    """
+# --- רקע מותאם ---
+def set_background(image_path):
+    with open(image_path, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    css = f"""
     <style>
-    body {
-        background-color: #ffe4ec;
+    .stApp {{
+        background-image: url("data:image/png;base64,{data}");
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
         direction: rtl;
         text-align: right;
-    }
-    .stTextInput > div > div > input {
-        direction: ltr;
-    }
+    }}
     </style>
-    """,
-    unsafe_allow_html=True
-)
-
-# ✅ כותרת מעוצבת
-st.markdown(
     """
-    <h1 style='text-align: right; color: black;'>🧠 זיהוי גידול בתמונות CT (ZIP העלאת קובץ)</h1>
-    <p style='text-align: right;'>יש להעלות קובץ ZIP הכולל שתי תיקיות בשם 'Cancer' ו־'Non-Cancer'</p>
-    """,
-    unsafe_allow_html=True
-)
+    st.markdown(css, unsafe_allow_html=True)
 
-uploaded_zip = st.file_uploader("📦 העלה קובץ ZIP", type="zip")
+set_background("images/ING2.png")  # ודא שהקובץ קיים בתיקייה
 
-if uploaded_zip is not None:
-    with tempfile.TemporaryDirectory() as temp_dir:
-        zip_path = os.path.join(temp_dir, "data.zip")
-        with open(zip_path, "wb") as f:
-            f.write(uploaded_zip.read())
+# --- כותרת ראשית ---
+st.title("🧠 זיהוי גידול בתמונות CT (הרצה מקומית)")
 
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(temp_dir)
+# --- שלב 1: קבלת נתיב מקומי לתיקייה עם Cancer ו־Non-Cancer ---
+st.markdown("📂 הזן את הנתיב המקומי לתיקייה המכילה שתי תיקיות בשם **'Cancer'** ו־**'Non-Cancer'**")
 
-        # חיפוש תקיית הבסיס שבתוכה נמצאות Cancer ו־Non-Cancer
-        for root, dirs, files in os.walk(temp_dir):
-            if 'Cancer' in dirs and 'Non-Cancer' in dirs:
-                dataset_path = root
-                break
-        else:
-            st.error("❌ קובץ ה-ZIP לא כולל תיקיות בשם 'Cancer' ו-'Non-Cancer'")
-            st.stop()
+dataset_path = st.text_input("📁 נתיב לתיקייה:", "").strip('"').strip("'")
 
-        st.success("📂 קובץ ה-ZIP הועלה ופוענח בהצלחה. מתחיל אימון...")
+if dataset_path and os.path.exists(dataset_path):
+    with st.spinner("🔁 מאמן את המודל..."):
+        datagen = ImageDataGenerator(rescale=1./255, validation_split=0.3)
 
-        # מחולל תמונות
-        datagen = ImageDataGenerator(
-            rescale=1./255,
-            validation_split=0.3
-        )
-
-        train_generator = datagen.flow_from_directory(
+        train_gen = datagen.flow_from_directory(
             dataset_path,
             target_size=(224, 224),
             batch_size=32,
@@ -78,7 +53,7 @@ if uploaded_zip is not None:
             classes=['Non-Cancer', 'Cancer']
         )
 
-        val_generator = datagen.flow_from_directory(
+        val_gen = datagen.flow_from_directory(
             dataset_path,
             target_size=(224, 224),
             batch_size=32,
@@ -88,6 +63,7 @@ if uploaded_zip is not None:
             classes=['Non-Cancer', 'Cancer']
         )
 
+        # בניית המודל
         base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
         for layer in base_model.layers:
             layer.trainable = False
@@ -103,35 +79,52 @@ if uploaded_zip is not None:
                       loss='binary_crossentropy',
                       metrics=['accuracy'])
 
-        history = model.fit(
-            train_generator,
-            validation_data=val_generator,
-            epochs=10
-        )
+        history = model.fit(train_gen, validation_data=val_gen, epochs=10)
 
-        # חיזוי וביצועים
-        val_generator.reset()
-        y_pred = model.predict(val_generator)
+        # חיזוי על קבוצת הוולידציה
+        val_gen.reset()
+        y_pred = model.predict(val_gen, verbose=0)
         y_pred_classes = (y_pred > 0.5).astype(int).reshape(-1)
-        y_true = val_generator.classes
+        y_true = val_gen.classes
 
-        st.subheader("📊 מדדים:")
-        st.text("Confusion Matrix:")
-        st.text(confusion_matrix(y_true, y_pred_classes))
-        st.text("Classification Report:")
-        st.text(classification_report(y_true, y_pred_classes, target_names=['Non-Cancer', 'Cancer']))
+        report = classification_report(
+            y_true, y_pred_classes,
+            target_names=["Non-Cancer", "Cancer"],
+            output_dict=True
+        )
+        recall_cancer = report["Cancer"]["recall"]
+
+        st.success("✅ האימון הסתיים")
+        st.write("🎯 **Recall לקבוצת Cancer:**", f"{recall_cancer:.2f}")
+        st.session_state.trained_model = model
 
         # גרפים
-        st.subheader("📈 גרפים")
-        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
-        ax1.plot(history.history['accuracy'], label='דיוק אימון')
-        ax1.plot(history.history['val_accuracy'], label='דיוק אימות')
-        ax1.set_title("דיוק המודל")
-        ax1.legend()
+        fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+        ax[0].plot(history.history['accuracy'], label='דיוק אימון')
+        ax[0].plot(history.history['val_accuracy'], label='דיוק אימות')
+        ax[0].set_title("דיוק")
+        ax[0].legend()
 
-        ax2.plot(history.history['loss'], label='איבוד אימון')
-        ax2.plot(history.history['val_loss'], label='איבוד אימות')
-        ax2.set_title("איבוד המודל")
-        ax2.legend()
+        ax[1].plot(history.history['loss'], label='איבוד אימון')
+        ax[1].plot(history.history['val_loss'], label='איבוד אימות')
+        ax[1].set_title("איבוד")
+        ax[1].legend()
 
         st.pyplot(fig)
+
+# --- שלב 2: העלאת תמונה לבחינה ---
+if "trained_model" in st.session_state:
+    image_file = st.file_uploader("🖼️ העלה תמונת CT לבחינה", type=["jpg", "png", "jpeg"])
+
+    if image_file:
+        img = load_img(image_file, target_size=(224, 224))
+        img_array = img_to_array(img) / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
+
+        prediction = st.session_state.trained_model.predict(img_array)[0][0]
+
+        st.image(img, caption="תמונה שנבחרה", use_column_width=True)
+        if prediction > 0.5:
+            st.error("🔴 גידול זוהה (Cancer)")
+        else:
+            st.success("🟢 לא זוהה גידול (Non-Cancer)")
