@@ -1,14 +1,12 @@
 import streamlit as st
 import base64
 
-# תצורת הדף
-st.set_page_config(page_title="ברוכים הבאים", layout="wide")
+st.set_page_config(page_title="אפליקציית חיזוי סרטן", layout="wide")
 
-# עיצוב RTL וטעינת רקע תמונה
-def set_bg_from_local(image_file):
-    with open(image_file, "rb") as f:
-        data = f.read()
-    encoded = base64.b64encode(data).decode()
+# טוען רקע מהתמונה המקומית
+def set_background(image_file):
+    with open(image_file, "rb") as img:
+        encoded = base64.b64encode(img.read()).decode()
     css = f"""
     <style>
     .stApp {{
@@ -16,43 +14,60 @@ def set_bg_from_local(image_file):
         background-size: cover;
         background-position: center;
         background-attachment: fixed;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }}
     html, body, [class*="css"] {{
         direction: rtl;
-        text-align: right;
-        font-family: Arial;
+        text-align: center;
     }}
-    .button-style {{
-        display: inline-block;
-        padding: 0.6em 1.2em;
-        margin: 10px;
-        font-size: 1.1em;
-        background-color: #4CAF50;
+    .main-title {{
+        font-size: 48px;
+        font-weight: 700;
+        margin-top: 50px;
+        color: #2E2E2E;
+    }}
+    .subtitle {{
+        font-size: 24px;
+        margin-bottom: 40px;
+        color: #333;
+    }}
+    .button-container {{
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        margin-top: 20px;
+    }}
+    .stButton>button {{
+        font-size: 18px;
+        padding: 0.5em 1.5em;
+        border-radius: 10px;
+        background-color: #ff69b4;
         color: white;
         border: none;
-        border-radius: 10px;
-        text-decoration: none;
-        cursor: pointer;
+        font-weight: bold;
+        transition: background-color 0.3s ease;
     }}
-    .button-style:hover {{
-        background-color: #45a049;
+    .stButton>button:hover {{
+        background-color: #e754a5;
     }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-# טוען רקע
-set_bg_from_local("images/IMG.png")
+set_background("images/IMG.png")
 
-# כותרת ראשית
-st.markdown("<h1 style='text-align: center;'>🧬 ברוכים הבאים לאפליקציית חיזוי סרטן השד</h1>", unsafe_allow_html=True)
-st.markdown("<h3 style='text-align: center;'>נא לבחור את הפעולה שתרצו לבצע:</h3>", unsafe_allow_html=True)
+# כותרות
+st.markdown("<div class='main-title'>🧬 ברוכים הבאים לאפליקציית חיזוי סרטן השד</div>", unsafe_allow_html=True)
+st.markdown("<div class='subtitle'>נא לבחור את הפעולה שתרצו לבצע:</div>", unsafe_allow_html=True)
 
-# כפתורים למעבר לדפים
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    if st.button("🔍 חיזוי חזרת מחלה", key="page1"):
+# כפתורים בשורה
+st.markdown("<div class='button-container'>", unsafe_allow_html=True)
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("🔍 חיזוי חזרת מחלה"):
         st.switch_page("pages/1_חיזוי_חזרת_מחלה.py")
 
-    if st.button("🖼️ בדיקת תמונות CT", key="page2"):
+with col2:
+    if st.button("🖼️ בדיקת תמונות CT"):
         st.switch_page("pages/2_בדיקת_CT.py")
+st.markdown("</div>", unsafe_allow_html=True)
