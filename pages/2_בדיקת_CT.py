@@ -31,7 +31,8 @@ def set_background(image_path):
     """
     st.markdown(css, unsafe_allow_html=True)
 
-set_background("images/IMG2.png")
+set_background("images/ING2.png")
+
 
 # --- כותרת ---
 st.title("🧠 זיהוי גידול בתמונות CT (העלאת ZIP)")
