@@ -1,7 +1,7 @@
 import streamlit as st
 import base64
 
-# פונקציה להגדרת רקע מתמונה
+# רקע מותאם
 def set_background(image_file):
     with open(image_file, "rb") as image:
         encoded = base64.b64encode(image.read()).decode()
@@ -25,12 +25,6 @@ def set_background(image_file):
         font-size: 24px;
         margin-bottom: 30px;
     }}
-    .button-container {{
-        display: flex;
-        justify-content: center;
-        gap: 30px;
-        margin-top: 30px;
-    }}
     .stButton>button {{
         background-color: #f94ca4;
         color: white;
@@ -50,13 +44,13 @@ set_background("images/IMG.png")
 st.markdown('<div class="title">שלום רופא יקר 🩺</div>', unsafe_allow_html=True)
 st.markdown('<div class="subtitle">יש לבחור אחת מהאופציות הבאות:</div>', unsafe_allow_html=True)
 
-# מיקום שני כפתורים במרכז בעזרת columns
-col1, col2, col3 = st.columns([3, 2, 3])
+# כפתורים ממורכזים באמצעות 5 עמודות
+col1, col2, col3, col4, col5 = st.columns([1, 2, 1, 2, 1])
 
-with col1:
-    if st.button("🔍 חיזוי חזרת מחלה"):
-        st.switch_page("pages/1_חיזוי_חזרת_מחלה.py")
-
-with col3:
+with col2:
     if st.button("🖼️ בדיקת תמונות CT"):
         st.switch_page("pages/2_בדיקת_CT.py")
+
+with col4:
+    if st.button("🔍 חיזוי חזרת מחלה"):
+        st.switch_page("pages/1_חיזוי_חזרת_מחלה.py")
