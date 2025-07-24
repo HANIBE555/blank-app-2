@@ -13,6 +13,25 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 st.set_page_config(page_title="זיהוי גידול בתמונות CT", layout="centered")
+
+# ✅ הגדרת רקע ורוד וכיווניות RTL
+st.markdown(
+    """
+    <style>
+    body {
+        background-color: #ffe4ec;
+        direction: rtl;
+        text-align: right;
+    }
+    .stTextInput > div > div > input {
+        direction: ltr;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+# ✅ כותרת מעוצבת
 st.markdown(
     """
     <h1 style='text-align: right; color: black;'>🧠 זיהוי גידול בתמונות CT (ZIP העלאת קובץ)</h1>
