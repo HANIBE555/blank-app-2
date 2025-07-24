@@ -60,7 +60,7 @@ if uploaded_file:
             acc_scores.append(accuracy_score(y_test, y_pred))
 
         mean_acc = np.mean(acc_scores)
-        st.success(f"✅ אימון הושלם עם דיוק ממוצע של {mean_acc:.2f}")
+        st.success(f"✅אימון הושלם ")
         st.session_state.model = model  # שומר את המודל האחרון
 
 if "model" in st.session_state:
