@@ -1,4 +1,6 @@
 import streamlit as st
+import zipfile
+import tempfile
 import os
 import base64
 import numpy as np
@@ -7,41 +9,47 @@ from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.preprocessing.image import ImageDataGenerator
-from tensorflow.keras.utils import load_img, img_to_array
-from sklearn.metrics import classification_report, confusion_matrix
+from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
+from sklearn.metrics import classification_report
 
-# --- רקע מותאם ---
+# רקע
 def set_background(image_path):
     with open(image_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
-    css = f"""
-    <style>
-    .stApp {{
-        background-image: url("data:image/png;base64,{data}");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        direction: rtl;
-    }}
-    </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
+    st.markdown(f"""
+        <style>
+        .stApp {{
+            background-image: url("data:image/png;base64,{data}");
+            background-size: cover;
+            background-position: center;
+            direction: rtl;
+        }}
+        </style>
+    """, unsafe_allow_html=True)
 
 set_background("images/ING2.png")
+st.title("🧪 זיהוי גידול בתמונות CT (העלאת ZIP עם תקיות)")
 
-# --- כותרת ---
-st.title("🖼️ בדיקת תמונות CT - זיהוי גידול")
+# --- שלב 1: העלאת ZIP ---
+zip_file = st.file_uploader("📦 העלה קובץ ZIP המכיל תקיות בשם 'Cancer' ו־'Non-Cancer'", type="zip")
 
-# --- שלב 1: העלאת תיקיית אימון ---
-uploaded_dir = st.text_input("📂 הזן את הנתיב לתיקייה עם תמונות מאוזנות (כוללת תתי תיקיות Cancer / Non-Cancer):")
+if zip_file:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        zip_path = os.path.join(tmpdir, "data.zip")
+        with open(zip_path, "wb") as f:
+            f.write(zip_file.read())
 
-if uploaded_dir and os.path.exists(uploaded_dir):
-    with st.spinner("🔁 מאמן את המודל..."):
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            zip_ref.extractall(tmpdir)
+
+        extracted_path = tmpdir  # כאן ה-ImageDataGenerator יקרא
+
+        st.info("📂 קובץ נפתח בהצלחה, מאמנים מודל...")
+
         datagen = ImageDataGenerator(rescale=1./255, validation_split=0.3)
 
         train_gen = datagen.flow_from_directory(
-            uploaded_dir,
+            extracted_path,
             target_size=(224, 224),
             batch_size=32,
             class_mode='binary',
@@ -51,7 +59,7 @@ if uploaded_dir and os.path.exists(uploaded_dir):
         )
 
         val_gen = datagen.flow_from_directory(
-            uploaded_dir,
+            extracted_path,
             target_size=(224, 224),
             batch_size=32,
             class_mode='binary',
@@ -71,25 +79,21 @@ if uploaded_dir and os.path.exists(uploaded_dir):
         predictions = Dense(1, activation='sigmoid')(x)
         model = Model(inputs=base_model.input, outputs=predictions)
 
-        model.compile(optimizer=Adam(learning_rate=0.0001),
-                      loss='binary_crossentropy',
-                      metrics=['accuracy'])
-
+        model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
         history = model.fit(train_gen, validation_data=val_gen, epochs=10)
 
-        # חיזוי
+        # שמירת מודל
+        st.session_state.trained_model = model
+
+        # דיווח
         val_gen.reset()
-        y_pred = model.predict(val_gen, verbose=0)
+        y_pred = model.predict(val_gen)
         y_pred_classes = (y_pred > 0.5).astype(int).reshape(-1)
         y_true = val_gen.classes
 
         report = classification_report(y_true, y_pred_classes, target_names=["Non-Cancer", "Cancer"], output_dict=True)
-        recall_cancer = report["Cancer"]["recall"]
-
         st.success("✅ אימון הושלם")
-        st.write("📊 **Recall לקבוצת Cancer:**", f"{recall_cancer:.2f}")
-
-        st.session_state.trained_model = model
+        st.write("📊 **Recall לקבוצת Cancer:**", f"{report['Cancer']['recall']:.2f}")
 
         # גרפים
         fig, ax = plt.subplots(1, 2, figsize=(12, 4))
@@ -107,8 +111,7 @@ if uploaded_dir and os.path.exists(uploaded_dir):
 
 # --- שלב 2: בדיקת תמונה חדשה ---
 if "trained_model" in st.session_state:
-    image_file = st.file_uploader("🖼️ העלה תמונת CT לבחינה", type=["jpg", "png", "jpeg"])
-
+    image_file = st.file_uploader("📷 העלה תמונת CT לבחינה", type=["jpg", "png", "jpeg"])
     if image_file:
         img = load_img(image_file, target_size=(224, 224))
         img_array = img_to_array(img) / 255.0
