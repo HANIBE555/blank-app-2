@@ -6,7 +6,7 @@ import tempfile
 import os
 import base64
 
-# --- רקע + כיווניות RTL ---
+# --- פונקציית רקע עם תמונה וכיווניות RTL ---
 def set_background(image_path):
     if os.path.exists(image_path):
         with open(image_path, "rb") as f:
@@ -22,15 +22,21 @@ def set_background(image_path):
             text-align: right;
             font-family: Arial, sans-serif;
         }}
+        h1, h2, h3, h4, h5, h6, p, label, div {{
+            direction: rtl !important;
+            text-align: right !important;
+        }}
         </style>
         """
         st.markdown(css, unsafe_allow_html=True)
 
-# קובץ רקע - ודא שהוא קיים באותה תיקייה
+# --- הגדרות דף ---
+st.set_page_config(page_title="בדיקת CT לגידול", layout="centered")
+
+# --- רקע ו־RTL ---
 set_background("ING2.png")
 
-# --- הגדרות כלליות ---
-st.set_page_config(page_title="בדיקת CT לגידול", layout="centered")
+# --- כותרת ---
 st.title("🧠 מערכת לזיהוי גידול בתמונת CT")
 
 # --- שלב 1: העלאת קובץ מודל ---
@@ -47,11 +53,11 @@ if model_file is not None:
         st.success("✅ המודל נטען בהצלחה!")
 
         # --- שלב 2: העלאת תמונה ---
-        st.subheader("2. העלה תמונת CT לבדיקה")
+        st.subheader("2. לבדיקה CT העלה תמונת")
         image_file = st.file_uploader("בחר תמונת CT", type=["jpg", "jpeg", "png"])
 
         if image_file is not None:
-            st.image(image_file, caption="תמונה שהועלתה", use_column_width=True)
+            st.image(image_file, caption="תמונה שהועלתה", use_container_width=True)
 
             # עיבוד תמונה
             img = load_img(image_file, target_size=(224, 224))
