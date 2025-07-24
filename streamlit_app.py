@@ -71,4 +71,4 @@ with col1:
 with col2:
     if st.button("🖼️ בדיקת תמונות CT"):
         st.switch_page("pages/2_בדיקת_CT.py")
-st.markdow
+st.markdown("</div>", unsafe_allow_html=True)
