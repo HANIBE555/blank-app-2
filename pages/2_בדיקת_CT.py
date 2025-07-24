@@ -32,37 +32,32 @@ def set_background(image_path):
         """
         st.markdown(css, unsafe_allow_html=True)
 
-# הגדרת רקע
+# קובץ הרקע שלך
 set_background("images/PNG2.png")
 
-# --- טעינת מודל ---
+# --- טעינת המודל המאומן ---
 @st.cache_resource
 def load_trained_model():
     return load_model("cancer_detector_model.h5")
 
 model = load_trained_model()
 
-# --- ממשק משתמש ---
-st.title("🧠 בדיקת תמונת CT לזיהוי גידול")
-st.write("העלה תמונה של סריקת CT כדי לבדוק האם מזוהה גידול.")
+# --- ממשק ---
+st.title("🧠 בדיקת CT לזיהוי גידול")
+st.write("העלה תמונה כדי לבדוק האם זוהה גידול סרטני.")
 
-uploaded_file = st.file_uploader("📤 העלה תמונה", type=["jpg", "jpeg", "png"])
+uploaded_file = st.file_uploader("📤 העלה תמונה (JPG / PNG)", type=["jpg", "jpeg", "png"])
 
-if uploaded_file is not None:
-    # הצגת תמונה
+if uploaded_file:
     image = load_img(uploaded_file, target_size=(224, 224))
-    st.image(image, caption="תמונה שהועלתה", use_column_width=True)
-
-    # עיבוד ותחזית
     img_array = img_to_array(image) / 255.0
     img_array = np.expand_dims(img_array, axis=0)
 
     prediction = model.predict(img_array)[0][0]
 
-    # הצגת תוצאה
+    st.image(image, caption="📷 התמונה שהועלתה", use_column_width=True)
     st.subheader("🔍 תוצאה:")
     if prediction > 0.5:
-        st.error("⚠️ זוהה גידול בתמונה")
+        st.error("🔴 זוהה גידול בתמונה (Cancer)")
     else:
-        st.success("✅ לא זוהה גידול בתמונה")
-
+        st.success("🟢 לא זוהה גידול בתמונה (Non-Cancer)")
