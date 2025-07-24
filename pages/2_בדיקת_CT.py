@@ -11,7 +11,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from tensorflow.keras.utils import load_img, img_to_array
 from sklearn.metrics import classification_report
 
-# --- רקע מותאם ---
+# --- רקע ---
 def set_background(image_path):
     with open(image_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
@@ -23,28 +23,27 @@ def set_background(image_path):
         background-position: center;
         background-repeat: no-repeat;
         direction: rtl;
-        text-align: right;
     }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-set_background("images/ING2.png")  # ודא שהקובץ קיים בתיקייה
+set_background("images/ING2.png")
 
-# --- כותרת ראשית ---
-st.title("🧠 זיהוי גידול בתמונות CT (הרצה מקומית)")
+# --- כותרת ---
+st.markdown("<h1 style='text-align: right;'>🧠 זיהוי גידול בתמונות CT (הרצה מקומית)</h1>", unsafe_allow_html=True)
 
-# --- שלב 1: קבלת נתיב מקומי לתיקייה עם Cancer ו־Non-Cancer ---
-st.markdown("📂 הזן את הנתיב המקומי לתיקייה המכילה שתי תיקיות בשם **'Cancer'** ו־**'Non-Cancer'**")
+# --- נתיב תיקייה ---
+st.markdown("📁 הזן את הנתיב המקומי לתיקייה המכילה שתי תיקיות בשם 'Cancer' ו־'Non-Cancer':", unsafe_allow_html=True)
+local_path = st.text_input("📂 נתיב לתיקייה:", "")
 
-dataset_path = st.text_input("📁 נתיב לתיקייה:", "").strip('"').strip("'")
-
-if dataset_path and os.path.exists(dataset_path):
+# --- אימון ---
+if local_path and os.path.exists(local_path):
     with st.spinner("🔁 מאמן את המודל..."):
         datagen = ImageDataGenerator(rescale=1./255, validation_split=0.3)
 
         train_gen = datagen.flow_from_directory(
-            dataset_path,
+            local_path,
             target_size=(224, 224),
             batch_size=32,
             class_mode='binary',
@@ -54,7 +53,7 @@ if dataset_path and os.path.exists(dataset_path):
         )
 
         val_gen = datagen.flow_from_directory(
-            dataset_path,
+            local_path,
             target_size=(224, 224),
             batch_size=32,
             class_mode='binary',
@@ -63,7 +62,6 @@ if dataset_path and os.path.exists(dataset_path):
             classes=['Non-Cancer', 'Cancer']
         )
 
-        # בניית המודל
         base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
         for layer in base_model.layers:
             layer.trainable = False
@@ -81,40 +79,37 @@ if dataset_path and os.path.exists(dataset_path):
 
         history = model.fit(train_gen, validation_data=val_gen, epochs=10)
 
-        # חיזוי על קבוצת הוולידציה
+        # חיזוי
         val_gen.reset()
         y_pred = model.predict(val_gen, verbose=0)
         y_pred_classes = (y_pred > 0.5).astype(int).reshape(-1)
         y_true = val_gen.classes
 
-        report = classification_report(
-            y_true, y_pred_classes,
-            target_names=["Non-Cancer", "Cancer"],
-            output_dict=True
-        )
+        report = classification_report(y_true, y_pred_classes, target_names=["Non-Cancer", "Cancer"], output_dict=True)
         recall_cancer = report["Cancer"]["recall"]
 
-        st.success("✅ האימון הסתיים")
-        st.write("🎯 **Recall לקבוצת Cancer:**", f"{recall_cancer:.2f}")
+        st.success("✅ האימון הסתיים!")
+        st.markdown(f"📊 <b>Recall עבור קבוצת Cancer:</b> {recall_cancer:.2f}", unsafe_allow_html=True)
+
         st.session_state.trained_model = model
 
         # גרפים
         fig, ax = plt.subplots(1, 2, figsize=(12, 4))
         ax[0].plot(history.history['accuracy'], label='דיוק אימון')
-        ax[0].plot(history.history['val_accuracy'], label='דיוק אימות')
+        ax[0].plot(history.history['val_accuracy'], label='דיוק ולידציה')
         ax[0].set_title("דיוק")
         ax[0].legend()
 
         ax[1].plot(history.history['loss'], label='איבוד אימון')
-        ax[1].plot(history.history['val_loss'], label='איבוד אימות')
+        ax[1].plot(history.history['val_loss'], label='איבוד ולידציה')
         ax[1].set_title("איבוד")
         ax[1].legend()
 
         st.pyplot(fig)
 
-# --- שלב 2: העלאת תמונה לבחינה ---
+# --- בדיקת תמונה חדשה ---
 if "trained_model" in st.session_state:
-    image_file = st.file_uploader("🖼️ העלה תמונת CT לבחינה", type=["jpg", "png", "jpeg"])
+    image_file = st.file_uploader("🖼️ העלה תמונת CT לבחינה", type=["jpg", "jpeg", "png"])
 
     if image_file:
         img = load_img(image_file, target_size=(224, 224))
