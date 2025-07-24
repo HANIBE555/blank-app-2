@@ -1,1 +1,8 @@
+
 streamlit
+streamlit-extras
+
+pandas
+scikit-learn>=1.2.0
+imbalanced-learn>=0.10.1
+joblib
