@@ -4,31 +4,7 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import tempfile
 import os
-import base64
 
-# --- הגדרת רקע עם CSS ---
-def set_background(image_path):
-    with open(image_path, "rb") as f:
-        data = base64.b64encode(f.read()).decode()
-    css = f"""
-    <style>
-    .stApp {{
-        background-image: url("data:image/png;base64,{data}");
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        direction: rtl;
-        text-align: right;
-        font-family: Arial, sans-serif;
-    }}
-    </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
-
-# --- טען רקע ---
-set_background("ING2.png")
-
-# --- הגדרות דף ---
 st.set_page_config(page_title="בדיקת CT לגידול", layout="centered")
 st.title("🧠 מערכת לזיהוי גידול בתמונת CT")
 
@@ -37,6 +13,7 @@ st.subheader("1. העלה קובץ מודל מסוג H5")
 model_file = st.file_uploader("בחר קובץ מודל (קובץ .h5)", type=["h5"])
 
 if model_file is not None:
+    # שומרים את הקובץ לקובץ זמני כדי לטעון אותו
     with tempfile.NamedTemporaryFile(delete=False, suffix=".h5") as tmp:
         tmp.write(model_file.read())
         tmp_path = tmp.name
@@ -53,7 +30,7 @@ if model_file is not None:
             st.image(image_file, caption="תמונה שהועלתה", use_column_width=True)
 
             # עיבוד תמונה
-            img = load_img(image_file, target_size=(224, 224))
+            img = load_img(image_file, target_size=(224, 224))  # שנה לגודל שהמודל דורש
             img_array = img_to_array(img) / 255.0
             img_array = np.expand_dims(img_array, axis=0)
 
