@@ -1,21 +1,18 @@
 import streamlit as st
-import zipfile
 import os
-import shutil
-import tempfile
-from tensorflow.keras.preprocessing.image import ImageDataGenerator, load_img, img_to_array
-from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
+import base64
+import numpy as np
+import matplotlib.pyplot as plt
+from tensorflow.keras.applications import ResNet50
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 from tensorflow.keras.optimizers import Adam
-import numpy as np
-from PIL import Image
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.utils import load_img, img_to_array
+from sklearn.metrics import classification_report, confusion_matrix
 
-st.set_page_config(page_title="בדיקת CT", layout="wide")
-
-# --- הגדרת רקע ---
+# --- רקע מותאם ---
 def set_background(image_path):
-    import base64
     with open(image_path, "rb") as f:
         data = base64.b64encode(f.read()).decode()
     css = f"""
@@ -33,56 +30,40 @@ def set_background(image_path):
 
 set_background("images/ING2.png")
 
-st.title("🖼 בדיקת תמונות CT – זיהוי גידולים")
+# --- כותרת ---
+st.title("🖼️ בדיקת תמונות CT - זיהוי גידול")
 
-# --- שלב 1: העלאת תיקיית אימון כ- ZIP ---
-uploaded_zip = st.file_uploader("📁 העלה תיקיית אימון (ZIP) עם תיקיות Cancer ו־Non-Cancer", type="zip")
+# --- שלב 1: העלאת תיקיית אימון ---
+uploaded_dir = st.text_input("📂 הזן את הנתיב לתיקייה עם תמונות מאוזנות (כוללת תתי תיקיות Cancer / Non-Cancer):")
 
-if uploaded_zip:
-    with tempfile.TemporaryDirectory() as tmpdir:
-        zip_path = os.path.join(tmpdir, "dataset.zip")
-        with open(zip_path, "wb") as f:
-            f.write(uploaded_zip.read())
-
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(tmpdir)
-
-        # חיפוש התיקייה שבתוך ה-ZIP
-        for root, dirs, files in os.walk(tmpdir):
-            if "Cancer" in dirs and "Non-Cancer" in dirs:
-                dataset_path = root
-                break
-        else:
-            st.error("❌ לא נמצאו תיקיות 'Cancer' ו־'Non-Cancer' בתוך הקובץ.")
-            st.stop()
-
-        # מחולל נתונים
+if uploaded_dir and os.path.exists(uploaded_dir):
+    with st.spinner("🔁 מאמן את המודל..."):
         datagen = ImageDataGenerator(rescale=1./255, validation_split=0.3)
 
-        train_generator = datagen.flow_from_directory(
-            dataset_path,
+        train_gen = datagen.flow_from_directory(
+            uploaded_dir,
             target_size=(224, 224),
             batch_size=32,
             class_mode='binary',
             subset='training',
-            seed=42
+            seed=42,
+            classes=['Non-Cancer', 'Cancer']
         )
 
-        val_generator = datagen.flow_from_directory(
-            dataset_path,
+        val_gen = datagen.flow_from_directory(
+            uploaded_dir,
             target_size=(224, 224),
             batch_size=32,
             class_mode='binary',
             subset='validation',
-            seed=42
+            seed=42,
+            classes=['Non-Cancer', 'Cancer']
         )
 
-        # בניית המודל
         base_model = ResNet50(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
         for layer in base_model.layers:
             layer.trainable = False
 
-        from tensorflow.keras.layers import Input
         x = base_model.output
         x = GlobalAveragePooling2D()(x)
         x = Dense(64, activation='relu')(x)
@@ -90,31 +71,53 @@ if uploaded_zip:
         predictions = Dense(1, activation='sigmoid')(x)
         model = Model(inputs=base_model.input, outputs=predictions)
 
-        model.compile(optimizer=Adam(learning_rate=0.0001), loss='binary_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=Adam(learning_rate=0.0001),
+                      loss='binary_crossentropy',
+                      metrics=['accuracy'])
 
-        with st.spinner("🔄 מאמן את המודל... המתן מספר שניות"):
-            model.fit(train_generator, validation_data=val_generator, epochs=10)
-            st.success("✅ המודל אומן בהצלחה!")
+        history = model.fit(train_gen, validation_data=val_gen, epochs=10)
 
-        st.session_state['model'] = model
+        # חיזוי
+        val_gen.reset()
+        y_pred = model.predict(val_gen, verbose=0)
+        y_pred_classes = (y_pred > 0.5).astype(int).reshape(-1)
+        y_true = val_gen.classes
 
-# --- שלב 2: העלאת תמונה לחיזוי ---
-if 'model' in st.session_state:
-    uploaded_img = st.file_uploader("🖼 העלה תמונת CT בודדת לבדיקת גידול", type=["png", "jpg", "jpeg"])
-    if uploaded_img:
-        image = Image.open(uploaded_img).convert('RGB')
-        image = image.resize((224, 224))
-        img_array = img_to_array(image)
-        img_array = preprocess_input(img_array)
+        report = classification_report(y_true, y_pred_classes, target_names=["Non-Cancer", "Cancer"], output_dict=True)
+        recall_cancer = report["Cancer"]["recall"]
+
+        st.success("✅ אימון הושלם")
+        st.write("📊 **Recall לקבוצת Cancer:**", f"{recall_cancer:.2f}")
+
+        st.session_state.trained_model = model
+
+        # גרפים
+        fig, ax = plt.subplots(1, 2, figsize=(12, 4))
+        ax[0].plot(history.history['accuracy'], label='Train Accuracy')
+        ax[0].plot(history.history['val_accuracy'], label='Val Accuracy')
+        ax[0].set_title("דיוק")
+        ax[0].legend()
+
+        ax[1].plot(history.history['loss'], label='Train Loss')
+        ax[1].plot(history.history['val_loss'], label='Val Loss')
+        ax[1].set_title("איבוד")
+        ax[1].legend()
+
+        st.pyplot(fig)
+
+# --- שלב 2: בדיקת תמונה חדשה ---
+if "trained_model" in st.session_state:
+    image_file = st.file_uploader("🖼️ העלה תמונת CT לבחינה", type=["jpg", "png", "jpeg"])
+
+    if image_file:
+        img = load_img(image_file, target_size=(224, 224))
+        img_array = img_to_array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        prediction = st.session_state['model'].predict(img_array)[0][0]
+        prediction = st.session_state.trained_model.predict(img_array)[0][0]
+
+        st.image(img, caption="תמונה שנבחרה", use_column_width=True)
         if prediction > 0.5:
-            st.error("🔴 נמצא חשד לגידול (Cancer)")
+            st.error("🔴 גידול זוהה (Cancer)")
         else:
             st.success("🟢 לא זוהה גידול (Non-Cancer)")
-
-        st.image(image, caption="תמונה שנבדקה", width=300)
-else:
-    st.info("⬆ יש להעלות קובץ אימון תחילה כדי לאמן את המודל")
-
