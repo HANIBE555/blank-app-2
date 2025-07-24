@@ -34,7 +34,6 @@ st.markdown("""
 🧑‍⚕ **הנחיות להזנת ערכים:**
 - tumor-size ו־inv-nodes: הזן את אמצע הטווח.
 - משתנים בינאריים: "כן"=1, "לא"=0.
-- deg-malig: ערך בין 1 ל־3.
 """)
 
 uploaded_file = st.file_uploader("📁 העלה קובץ CSV עם עמודת Class", type=["csv"])
