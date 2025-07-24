@@ -5,6 +5,33 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 import tempfile
 import os
 
+def set_background(image_file):
+    with open(image_file, "rb") as f:
+        data = base64.b64encode(f.read()).decode()
+    css = f"""
+    <style>
+    .stApp {{
+        background-image: url("data:image/png;base64,{data}");
+        background-size: cover;
+        background-position: top left;
+        background-repeat: no-repeat;
+    }}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+set_background("images/ING2.png")
+
+# עיצוב RTL
+st.markdown("""
+<style>
+html, body, [class*="css"] {
+    direction: rtl !important;
+    text-align: right !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
 st.set_page_config(page_title="בדיקת CT לגידול", layout="centered")
 st.title("🧠 מערכת לזיהוי גידול בתמונת CT")
 
