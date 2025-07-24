@@ -85,7 +85,7 @@ if "model" in st.session_state:
 
     tumor_size = st.number_input("tumor-size (אמצע טווח בגודל הגידול)", step=0.1)
     inv_nodes = st.number_input("inv-nodes (אמצע טווח בקשריות נגועות)", step=0.1)
-    deg_malig = st.number_input("deg-malig (דרגת ממאירות־)", step=1)
+    deg_malig = st.number_input("deg-malig (דרגת ממאירות)", step=1)
 
     node_caps = st.selectbox("node-caps (קופסית קשרית נגועה)", options=["לא", "כן"])
     irradiat = st.selectbox("irradiat (טופל בהקרנות)", options=["לא", "כן"])
