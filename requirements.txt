@@ -1,10 +1,11 @@
 
-streamlit
-streamlit-extras
+streamlit  # ספרייה ליצירת אפליקציות ווב אינטראקטיביות ב־Python
+streamlit-extras  # אוסף הרחבות מוכנות לשימוש עבור Streamlit (כמו כפתורי מעבר בין דפים)
 
-pandas
-scikit-learn>=1.2.0
-imbalanced-learn>=0.10.1
-joblib
-tensorflow
-matplotlib
+pandas  # ספרייה לעיבוד, ניתוח וטעינת נתונים בפורמט טבלאי (DataFrame)
+scikit-learn>=1.2.0  # ספרייה ללמידת מכונה – מכילה אלגוריתמים כמו רגרסיה, עצים, קלאסיפיקציה, נירמול נתונים ועוד
+imbalanced-learn>=0.10.1  # הרחבה ל־scikit-learn שמטפלת בבעיות של חוסר איזון בין קטגוריות (למשל SMOTE)
+joblib  # ספרייה לשמירה וטעינה מהירה של מודלים או אובייקטים גדולים בזיכרון
+
+tensorflow  # ספרייה ללמידה עמוקה (Deep Learning) – רשתות עצביות, CNN, RNN וכו'
+matplotlib  # ספרייה ליצירת גרפים ותרשימים ויזואליים
