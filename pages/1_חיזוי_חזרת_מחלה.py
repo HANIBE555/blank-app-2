@@ -84,7 +84,7 @@ if uploaded_file:
             acc_scores.append(accuracy_score(y_test, y_pred))  # חישוב דיוק לכל קיפול
 
         mean_acc = np.mean(acc_scores)  # ממוצע דיוק על כל הקיפולים
-        st.success(f"✅ אימון הושלם | דיוק ממוצע בקיפול: {mean_acc:.3f}")  # דיווח הצלחה
+        st.success(f"✅ הנתונים התקבלו בהצלחה")  # דיווח הצלחה
         st.session_state.model = model  # שמירת המודל האחרון ב־session_state (לשימוש בחיזוי)
 
 # ---------- טופס קלט לחיזוי ----------
